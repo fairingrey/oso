@@ -83,6 +83,30 @@ impl Oso {
         }
     }
 
+    /// Makes an allow_field query with the given actor, action, resource and field and returns true or false.
+    pub fn authorize_field<Actor, Action, Resource, Field>(
+        &self,
+        actor: Actor,
+        action: Action,
+        resource: Resource,
+        field: Field,
+    ) -> crate::Result<bool>
+    where
+        Actor: ToPolar,
+        Action: ToPolar,
+        Resource: ToPolar,
+        Field: ToPolar,
+    {
+        let mut query = self
+            .query_rule("allow_field", (actor, action, resource, field))
+            .unwrap();
+        match query.next() {
+            Some(Ok(_)) => Ok(true),
+            Some(Err(e)) => Err(e),
+            None => Ok(false),
+        }
+    }
+
     /// Get the actions actor is allowed to take on resource.
     /// Returns a [std::collections::HashSet] of actions, typed according the return value.
     /// # Examples
@@ -119,6 +143,47 @@ impl Oso {
                 Some(Ok(result)) => {
                     if let Some(action) = result.get("action") {
                         set.insert(T::from_polar(action)?);
+                    }
+                }
+                Some(Err(e)) => return Err(e),
+                None => break,
+            };
+        }
+
+        Ok(set)
+    }
+
+    /// Get the fields of the resource an actor is allowed to perform an action on.
+    pub fn authorized_fields<Actor, Action, Resource, T>(
+        &self,
+        actor: Actor,
+        action: Action,
+        resource: Resource,
+    ) -> crate::Result<HashSet<T>>
+    where
+        Actor: ToPolar,
+        Action: ToPolar,
+        Resource: ToPolar,
+        T: FromPolar + Eq + Hash,
+    {
+        let mut query = self
+            .query_rule(
+                "allow_field",
+                (
+                    actor,
+                    action,
+                    resource,
+                    PolarValue::Variable("field".to_owned()),
+                ),
+            )
+            .unwrap();
+
+        let mut set = HashSet::new();
+        loop {
+            match query.next() {
+                Some(Ok(result)) => {
+                    if let Some(field) = result.get("field") {
+                        set.insert(T::from_polar(field)?);
                     }
                 }
                 Some(Err(e)) => return Err(e),

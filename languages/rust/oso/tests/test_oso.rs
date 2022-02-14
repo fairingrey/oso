@@ -222,3 +222,52 @@ fn test_get_allowed_actions() -> oso::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_authorize_field() -> oso::Result<()> {
+    common::setup();
+    let mut oso = Oso::new();
+
+    oso.register_class(User::get_polar_class()).unwrap();
+
+    oso.load_str(
+        r#"allow_field(_, action, _resource: Widget{id: 1}, field) if
+           action in ["CREATE", "READ"] and
+           field in ["HEAD", "BODY"];"#,
+    )?;
+
+    let actor = User::new(String::from("john"));
+    let action = "CREATE";
+    let resource = Widget::new(1);
+    let field = "HEAD";
+
+    assert!(oso.authorize_field(actor, action, resource, field)?);
+
+    Ok(())
+}
+
+#[test]
+fn test_authorized_fields() -> oso::Result<()> {
+    common::setup();
+    let mut oso = Oso::new();
+
+    oso.register_class(User::get_polar_class()).unwrap();
+    oso.register_class(Widget::get_polar_class()).unwrap();
+
+    oso.load_str(
+        r#"allow_field(_actor: User{name: "sally"}, action, _resource: Widget{id: 1}, field) if
+           action in ["CREATE", "READ"] and
+           field in ["HEAD", "BODY"];"#,
+    )?;
+
+    let actor = User::new(String::from("sally"));
+    let action = "CREATE";
+    let resource = Widget::new(1);
+    let fields: HashSet<String> = oso.authorized_fields(actor, action, resource)?;
+
+    assert!(fields.len() == 2);
+    assert!(fields.contains("HEAD"));
+    assert!(fields.contains("BODY"));
+
+    Ok(())
+}
