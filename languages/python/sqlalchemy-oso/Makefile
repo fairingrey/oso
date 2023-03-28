@@ -20,6 +20,7 @@ test:
 	$(MAKE) tox
 
 fmt: dev-requirements
+	isort .
 	black .
 
 lint: dev-requirements
@@ -33,4 +34,4 @@ package:
 	python setup.py sdist bdist_wheel
 
 tox: dev-requirements
-	TOX_PARALLEL_NO_SPINNER=1 tox -p
+	tox

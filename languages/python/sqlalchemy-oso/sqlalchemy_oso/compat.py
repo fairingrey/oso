@@ -3,9 +3,8 @@
 Keep us compatible with multiple SQLAlchemy versions by implementing wrappers
 when needed here.
 """
-from packaging.version import parse
-
 import sqlalchemy
+from packaging.version import parse
 
 version = parse(sqlalchemy.__version__)  # type: ignore
 USING_SQLAlchemy_v1_3 = version >= parse("1.3") and version < parse("1.4")
@@ -17,7 +16,15 @@ def iterate_model_classes(base_or_registry):
     try:  # 1.3 declarative base.
         # TODO (dhatch): Not sure this is legit b/c it uses an internal interface?
         models = base_or_registry._decl_class_registry.items()
-        yield from {model for name, model in models if name != "_sa_module_registry"}
+        for name, model in models:
+            if name != "_sa_module_registry":
+                if isinstance(
+                    model, sqlalchemy.ext.declarative.clsregistry._MultipleClassMarker
+                ):
+                    for model_ref in model.contents:
+                        yield model_ref()
+                else:
+                    yield model
     except AttributeError:
         try:  # 1.4 declarative base.
             mappers = base_or_registry.registry.mappers

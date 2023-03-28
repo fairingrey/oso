@@ -20,7 +20,7 @@ pub const RESOURCE_UNION_NAME: &str = "Resource";
 // This'll come into play for "owner"-style actor relationships.
 
 // This type is used as a pre-validation bridge between LALRPOP & Rust.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Production {
     Declaration((Term, Term)), // (Symbol, List<String> | Dict<Symbol, Symbol>)
     ShorthandRule(Term, (Term, Option<(Term, Term)>)), // (String, (String, Option<(Symbol, String)>))
@@ -183,7 +183,7 @@ pub fn resource_block_from_productions(
     )
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Declaration {
     Role,
     Permission,
@@ -225,14 +225,14 @@ impl Declaration {
 
 // TODO(gj): this will go away when we have true unions in the future.
 /// Resource blocks can either be declared as actors or resources.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BlockType {
     Actor,
     Resource,
 }
 
 /// Successfully-parsed but not-yet-fully-validated-or-persisted resource block.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResourceBlock {
     pub block_type: BlockType,
     pub resource: Term,
@@ -629,9 +629,9 @@ impl ResourceBlock {
 
 #[cfg(test)]
 mod tests {
-    use permute::permute;
-
     use std::collections::HashSet;
+
+    use permutohedron::Heap;
 
     use super::*;
     use crate::error::{
@@ -1314,8 +1314,8 @@ mod tests {
             _ => false,
         };
 
-        let test_case = |parts: Vec<&str>, expected: &ResourceBlock| {
-            for permutation in permute(parts).into_iter() {
+        let test_case = |mut parts: Vec<&str>, expected: &ResourceBlock| {
+            for permutation in Heap::new(&mut parts) {
                 let mut policy = "resource Repo {\n".to_owned();
                 policy += &permutation.join("\n");
                 policy += "}";

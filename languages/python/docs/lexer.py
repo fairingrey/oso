@@ -55,18 +55,15 @@ class GenericShellLexer(Lexer):
                 curcode += line[prompt_len:]
             else:
                 if curcode:
-                    for item in do_insertions(
+                    yield from do_insertions(
                         insertions, lexer.get_tokens_unprocessed(curcode)
-                    ):
-                        yield item
+                    )
+
                     curcode = ""
                     insertions = []
                 yield match.start(), token.Generic.Output, line
         if curcode:
-            for item in do_insertions(
-                insertions, lexer.get_tokens_unprocessed(curcode)
-            ):
-                yield item
+            yield from do_insertions(insertions, lexer.get_tokens_unprocessed(curcode))
 
 
 class JShellLexer(GenericShellLexer):

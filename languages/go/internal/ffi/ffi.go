@@ -4,7 +4,8 @@ package ffi
 // #include <stdint.h>
 // #include <stdlib.h>
 // #include "native/polar.h"
-// #cgo linux,amd64 LDFLAGS: ${SRCDIR}/native/linux/libpolar.a -ldl -lm
+// #cgo linux,amd64 LDFLAGS: ${SRCDIR}/native/linux/amd64/libpolar.a -ldl -lm
+// #cgo linux,arm64 LDFLAGS: ${SRCDIR}/native/linux/arm64/libpolar.a -ldl -lm
 // #cgo darwin,amd64 LDFLAGS: ${SRCDIR}/native/macos/amd64/libpolar.a -ldl -lm
 // #cgo darwin,arm64 LDFLAGS: ${SRCDIR}/native/macos/arm64/libpolar.a -ldl -lm
 // #cgo windows,amd64 LDFLAGS: ${SRCDIR}/native/windows/libpolar.a -lm -lws2_32 -luserenv -lbcrypt
@@ -85,7 +86,7 @@ func checkResultVoid(res *C.polar_CResult_c_void) error {
 func checkResultString(res *C.polar_CResult_c_char) (*string, error) {
 	err := res.error
 	resultPtr := res.result
-	// it's fine to cast this pointer to result c_void, since Rust wont
+	// it's fine to cast this pointer to result c_void, since Rust won't
 	// do anything with inner pointers anyway
 	defer C.result_free((*C.polar_CResult_c_void)((unsafe.Pointer)(res)))
 	if err != nil {
@@ -101,7 +102,7 @@ func checkResultString(res *C.polar_CResult_c_char) (*string, error) {
 func checkResultQuery(res *C.polar_CResult_Query) (*QueryFfi, error) {
 	err := res.error
 	resultPtr := res.result
-	// it's fine to cast this pointer to result c_void, since Rust wont
+	// it's fine to cast this pointer to result c_void, since Rust won't
 	// do anything with inner pointers anyway
 	defer C.result_free((*C.polar_CResult_c_void)((unsafe.Pointer)(res)))
 	if err != nil {

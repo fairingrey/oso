@@ -1,22 +1,15 @@
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from math import inf, isnan, nan
 from pathlib import Path
-from enum import Enum
-
-from polar import (
-    exceptions,
-    Polar,
-    Predicate,
-    Variable,
-    Expression,
-    Pattern,
-)
-from polar.partial import TypeConstraint
-from polar.errors import ValidationError
-from dataclasses import dataclass
 from typing import List
 
 import pytest
+
+from polar import Expression, Pattern, Polar, Predicate, Variable, exceptions
+from polar.errors import ValidationError
+from polar.partial import TypeConstraint
 
 
 def test_anything_works(polar, query):
@@ -95,7 +88,7 @@ def test_clear_rules(polar, query):
     polar.clear_rules()
 
     with pytest.raises(exceptions.PolarRuntimeError) as e:
-        query(("f(1)")) == []
+        query("f(1)") == []
     assert "Query for undefined rule `f`" in str(e.value)
     assert len(query("x = new Test()")) == 1
 
@@ -401,8 +394,8 @@ def test_parser_errors(polar):
     with pytest.raises(exceptions.InvalidTokenCharacter) as e:
         polar.load_str(rules)
     assert str(e.value).startswith(
-        "'\\u{0}' is not a valid character. Found in this is not allowed\\u{0} at line 2, column 17"
-    )
+        "'\\0' is not a valid character. Found in this is not allowed\\0 at line 2, column 17"
+    ), e
 
     # InvalidToken -- not sure what causes this
 
@@ -912,7 +905,7 @@ def test_iterators(polar, qeval, qvar):
 
     class Bar(list):
         def sum(self):
-            return sum(x for x in self)
+            return sum(self)
 
     polar.register_class(Bar)
     assert qvar("x in new Bar([1, 2, 3])", "x") == [1, 2, 3]

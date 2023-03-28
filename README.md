@@ -12,7 +12,7 @@
 
 ## What is Oso?
 
-Oso is a batteries-included framework for building authorization in your application. 
+Oso is a batteries-included framework for building authorization in your application.
 
 With Oso, you can:
 - **Model**: Set up common permissions patterns like role-based access control (RBAC) and relationships using Oso’s built-in primitives. Extend them however you need with Oso’s declarative policy language, Polar.
@@ -24,7 +24,7 @@ Oso offers libraries for [Node.js][badge-nodejs-link],
 [Rust][badge-rust-link], [Ruby][badge-ruby-link], and
 [Java][badge-java-link].
 
-Our latest creation Oso Cloud (Preview) makes authorization across services as easy as oso.authorize(user, action, resource). [Learn about it.](https://www.osohq.com/oso-cloud)
+Our latest creation Oso Cloud makes authorization across services as easy as oso.authorize(user, action, resource). [Learn about it.](https://www.osohq.com/oso-cloud)
 
 ## Documentation
 
@@ -41,7 +41,7 @@ If you have any questions on Oso or authorization more generally, you can join o
 
 ## Share your story
 
-We'd love to hear about your use case and experience with Oso. Share your story in our [Success Stories issue](https://github.com/osohq/oso/issues/1081) or fill out [this form](https://osohq.typeform.com/to/mIFfkN05) for some Oso swag.
+We'd love to hear about your use case and experience with Oso. Share your story in our [Success Stories issue](https://github.com/osohq/oso/issues/1081).
 
 ## Development
 
@@ -64,11 +64,11 @@ To build the WebAssembly core for the Node.js library, you will need to have
 To work on a language library, you will need to meet the following version
 requirements:
 
-- Java: 10+
+- Java: 11+
   - Maven: 3.6+
 - Node.js: 12.20.0+
   - Yarn 1.22+
-- Python: 3.6+
+- Python: 3.7+
 - Ruby: 2.4+
   - Bundler 2.1.4+
 - Rust: 1.46+

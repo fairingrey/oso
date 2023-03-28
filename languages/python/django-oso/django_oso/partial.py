@@ -1,12 +1,12 @@
 from typing import Tuple, Union
-from django.db.models import F, Q, Model
-from django.apps import apps
-from django.db.models.expressions import Exists, OuterRef
 
-from polar.expression import Expression
-from polar.exceptions import UnsupportedError
-from polar.partial import dot_path
+from django.apps import apps
+from django.db.models import F, Model, Q
+from django.db.models.expressions import Exists, OuterRef
 from oso import Variable
+from polar.exceptions import UnsupportedError
+from polar.expression import Expression
+from polar.partial import dot_path
 
 from .oso import django_model_name
 
@@ -57,7 +57,9 @@ def get_model_by_path(
 
 class FilterBuilder:
     def __init__(self, model: Model, name="_this", parent=None):
-        self.name = name
+        self.name = (
+            super(Variable, name).__str__() if isinstance(name, Variable) else name
+        )
         self.model = model
         self.filter = TRUE_FILTER
         # Map variables to subquery

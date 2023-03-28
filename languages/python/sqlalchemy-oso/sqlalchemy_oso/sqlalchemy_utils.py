@@ -7,7 +7,7 @@ We must detect all entities properly to apply authorization.
 """
 import sqlalchemy
 from sqlalchemy import inspect
-from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.orm.util import AliasedClass, AliasedInsp
 
 
 def to_class(entity):
@@ -51,8 +51,8 @@ try:
 
         def _entities_in_statement(statement):
             try:
-                entities = (cd["entity"] for cd in statement.column_descriptions)
-                return set(e for e in entities if e is not None)
+                entities = (cd.get("entity") for cd in statement.column_descriptions)
+                return {e for e in entities if e is not None}
             except AttributeError:
                 return set()
 
@@ -66,7 +66,7 @@ try:
 
         return entities
 
-    def default_load_entities(entities):
+    def default_load_entities(entities, seen_relationships=None):
         """Find related entities that will be loaded on all queries to ``entities``
            due to the default loader strategy.
 
@@ -85,16 +85,24 @@ try:
         for entity in entities:
             mapper = sqlalchemy.inspect(entity)
             # If the entity is an alias, get the mapper for the underlying entity.
-            if isinstance(mapper, sqlalchemy.orm.util.AliasedInsp):
+            if isinstance(mapper, AliasedInsp):
                 mapper = mapper.mapper
 
             relationships = mapper.relationships
+            if seen_relationships is None:
+                seen_relationships = set()
             for rel in relationships.values():
+                if rel in seen_relationships:
+                    # prevent infinitely recursing when we've already seen the relationship
+                    continue
+                seen_relationships.add(rel)
                 # We only detect `"joined"` here because `"selectin"` and `"subquery"`
                 # issue multiple queries that we capture in the `do_orm_execute` event
                 # handler.
                 if rel.lazy == "joined":
-                    default_entities |= default_load_entities([rel.mapper])
+                    default_entities |= default_load_entities(
+                        [rel.mapper], seen_relationships
+                    )
                     default_entities.add(rel.mapper)
 
         return default_entities

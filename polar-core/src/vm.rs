@@ -34,7 +34,7 @@ use crate::visitor::{walk_term, Visitor};
 pub const MAX_STACK_SIZE: usize = 10_000;
 pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Eq)]
 pub enum LogLevel {
     Trace,
     Debug,
@@ -195,7 +195,7 @@ pub fn compare(
     // Coerce booleans to integers.
     // FIXME(gw) why??
     fn to_int(x: bool) -> Numeric {
-        Numeric::Integer(if x { 1 } else { 0 })
+        Numeric::Integer(i64::from(x))
     }
 
     fn compare<T: PartialOrd>(op: Operator, left: T, right: T) -> PolarResult<bool> {
@@ -347,7 +347,7 @@ impl PolarVirtualMachine {
     }
 
     pub fn set_logging_options(&mut self, rust_log: Option<String>, polar_log: Option<String>) {
-        let polar_log = polar_log.unwrap_or_else(|| "".to_string());
+        let polar_log = polar_log.unwrap_or_default();
         let polar_log_vars: HashSet<String> = polar_log
             .split(',')
             .filter(|v| !v.is_empty())
@@ -711,7 +711,7 @@ impl PolarVirtualMachine {
             .bindings_after(include_temps, &self.csp)
     }
 
-    /// Retrive internal binding stack for debugger.
+    /// Retrieve internal binding stack for debugger.
     pub fn bindings_debug(&self) -> &BindingStack {
         self.binding_manager.bindings_debug()
     }
@@ -799,14 +799,16 @@ impl PolarVirtualMachine {
                     // print BINDINGS: { .. } only for TRACE logs
                     if !terms.is_empty() && configured_log_level == LogLevel::Trace {
                         let relevant_bindings = self.relevant_bindings(terms);
-                        msg.push_str(&format!(
+                        write!(
+                            msg,
                             ", BINDINGS: {{{}}}",
                             relevant_bindings
                                 .iter()
                                 .map(|(var, val)| format!("{} => {}", var.0, val))
                                 .collect::<Vec<String>>()
                                 .join(", ")
-                        ));
+                        )
+                        .unwrap();
                     }
                     self.print(msg);
                     for line in &lines[1..] {
@@ -1388,12 +1390,12 @@ impl PolarVirtualMachine {
                 msg.push('(');
                 let args = args
                     .clone()
-                    .unwrap_or_else(Vec::new)
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|a| a.to_string());
                 let kwargs = kwargs
                     .clone()
-                    .unwrap_or_else(BTreeMap::new)
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|(k, v)| format!("{}: {}", k, v));
                 msg.push_str(&args.chain(kwargs).collect::<Vec<_>>().join(", "));
@@ -1478,7 +1480,7 @@ impl PolarVirtualMachine {
         // - Print INFO event for queries for rules.
         // - Print TRACE (a superset of INFO) event for all other queries.
         // - We filter out single-element ANDs, which many rule bodies take the form of, to instead
-        //   log only their inner operations for readibility|brevity reasons.
+        //   log only their inner operations for readability|brevity reasons.
         match &term.value() {
             Value::Call(predicate) => {
                 self.log(
@@ -1701,8 +1703,7 @@ impl PolarVirtualMachine {
             }
             Operator::Print => {
                 self.print(
-                    &args
-                        .iter()
+                    args.iter()
                         .map(|arg| self.deref(arg).to_string())
                         .collect::<Vec<_>>()
                         .join(", "),
@@ -2292,7 +2293,7 @@ impl PolarVirtualMachine {
             (Value::Call(left), Value::Call(right)) => {
                 if left.kwargs.is_some() || right.kwargs.is_some() {
                     // Handled in the parser.
-                    return invalid_state("unify: unexpected kwargs".to_string());
+                    return invalid_state("unify: unexpected kwargs");
                 }
                 if left.name == right.name && left.args.len() == right.args.len() {
                     self.append_goals(left.args.iter().zip(right.args.iter()).map(
@@ -2401,7 +2402,7 @@ impl PolarVirtualMachine {
         }
     }
 
-    /// Unify two list that end with a rest-variable with eachother.
+    /// Unify two list that end with a rest-variable with each other.
     /// A helper method for `unify_lists`.
     #[allow(clippy::ptr_arg)]
     fn unify_two_lists_with_rest<F>(
@@ -2562,11 +2563,11 @@ impl PolarVirtualMachine {
         if rules.is_empty() {
             return self.push_goal(Goal::Backtrack);
         } else if outer > rules.len() {
-            return invalid_state("bad outer index".to_string());
+            return invalid_state("bad outer index");
         } else if inner > rules.len() {
-            return invalid_state("bad inner index".to_string());
+            return invalid_state("bad inner index");
         } else if inner > outer {
-            return invalid_state("bad insertion sort state".to_string());
+            return invalid_state("bad insertion sort state");
         }
 
         let next_outer = Goal::SortRules {
@@ -2599,7 +2600,7 @@ impl PolarVirtualMachine {
                 self.choose_conditional(vec![compare], vec![next_inner], vec![next_outer])?;
             } else {
                 if inner != 0 {
-                    return invalid_state("inner == 0".to_string());
+                    return invalid_state("inner == 0");
                 }
                 self.push_goal(next_outer)?;
             }
@@ -2617,7 +2618,7 @@ impl PolarVirtualMachine {
                             .parsed_context()
                             .map_or_else(|| "".into(), Context::source_position);
 
-                        rule_strs.push_str(&format!("\n  {}{}", rule.head_as_string(), context));
+                        write!(rule_strs, "\n  {}{}", rule.head_as_string(), context).unwrap();
                     }
                     rule_strs
                 },
@@ -2664,7 +2665,7 @@ impl PolarVirtualMachine {
     }
 
     /// Succeed if `left` is more specific than `right` with respect to `args`.
-    #[allow(clippy::ptr_arg)]
+    #[allow(clippy::ptr_arg, clippy::wrong_self_convention)]
     fn is_more_specific(&mut self, left: &Rule, right: &Rule, args: &TermList) -> PolarResult<()> {
         let zipped = left.params.iter().zip(right.params.iter()).zip(args.iter());
         for ((left_param, right_param), arg) in zipped {
@@ -2731,6 +2732,7 @@ impl PolarVirtualMachine {
     }
 
     /// Determine if `left` is a more specific specializer ("subspecializer") than `right`
+    #[allow(clippy::wrong_self_convention)]
     fn is_subspecializer(
         &mut self,
         answer: &Symbol,
@@ -2973,7 +2975,7 @@ impl Runnable for PolarVirtualMachine {
                 } else {
                     let mut out = "RESULT: {\n".to_string(); // open curly & newline
                     for (key, value) in &bindings {
-                        out.push_str(&format!("  {}: {}\n", key, value)); // key-value pairs spaced w/ newlines
+                        writeln!(out, "  {}: {}", key, value).unwrap(); // key-value pairs spaced w/ newlines
                     }
                     out.push('}'); // closing curly
                     out
@@ -3067,7 +3069,8 @@ impl Runnable for PolarVirtualMachine {
 
 #[cfg(test)]
 mod tests {
-    use permute::permute;
+
+    use permutohedron::Heap;
 
     use super::*;
     use crate::error::ErrorKind;
@@ -3183,8 +3186,8 @@ mod tests {
         assert_query_events!(vm, [QueryEvent::Done { result: true }]);
 
         // Querying for f(1), f(2), f(3)
-        let parts = vec![f1, f2, f3];
-        for permutation in permute(parts) {
+        let mut parts = vec![f1, f2, f3];
+        for permutation in Heap::new(&mut parts) {
             vm.push_goal(Goal::Query {
                 term: Term::new_from_test(Value::Expression(Operation {
                     operator: Operator::And,

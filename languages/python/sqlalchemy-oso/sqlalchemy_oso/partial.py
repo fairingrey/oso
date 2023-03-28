@@ -42,7 +42,7 @@ Would be represented as the expression::
 - :py:func:`translate_expr`: Translate an expression.
 - :py:func:`translate_and`: Translate an and operation
 - :py:func:`translate_compare`: Translate a comparison operation (=, <, etc.)
-- :py:func:`translate_in`: Translate an in opertaion.
+- :py:func:`translate_in`: Translate an in operation.
 - :py:func:`translate_isa`: Translate an isa.
 - :py:func:`translate_dot`: Translate a dot operation.
 
@@ -68,16 +68,15 @@ used.
 import functools
 from typing import Any, Callable, Tuple
 
-from sqlalchemy.orm.session import Session
+from polar.exceptions import PolarRuntimeError, UnsupportedError
+from polar.expression import Expression
+from polar.partial import dot_path
+from polar.variable import Variable
 from sqlalchemy import inspect
 from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm.session import Session
 from sqlalchemy.sql import expression as sql
 from sqlalchemy.sql.elements import True_
-
-from polar.partial import dot_path
-from polar.expression import Expression
-from polar.variable import Variable
-from polar.exceptions import UnsupportedError
 
 from sqlalchemy_oso.preprocess import preprocess
 
@@ -96,7 +95,7 @@ COMPARISONS = {
 }
 
 
-def flip_op(operator):
+def flip_op(operator: str) -> str:
     flips = {
         "Eq": "Eq",
         "Unify": "Unify",
@@ -110,6 +109,8 @@ def flip_op(operator):
 
 
 def and_filter(current, new):
+    if isinstance(current, bool):
+        current = sql.true() if current else sql.false()
     if isinstance(current, True_):
         return new
     else:
@@ -180,17 +181,20 @@ def translate_isa(expression: Expression, session: Session, model, get_model):
     assert expression.operator == "Isa"
     left, right = expression.args
     left_path = dot_path(left)
-
-    assert left_path[0] == Variable("_this")
-    left_path = left_path[1:]  # Drop _this.
     if left_path:
+        assert left_path[0] == Variable("_this")
+        left_path = left_path[1:]  # Drop _this.
         for field_name in left_path:
             _, model, __ = get_relationship(model, field_name)
 
     assert not right.fields, "Unexpected fields in isa expression"
     constraint_type = get_model(right.tag)
     model_type = inspect(model, raiseerr=True).class_
-    return sql.true() if issubclass(model_type, constraint_type) else sql.false()
+    return (
+        sql.true()
+        if issubclass(model_type, constraint_type) or isinstance(left, constraint_type)
+        else sql.false()
+    )
 
 
 def translate_compare(expression: Expression, session: Session, model, get_model):
@@ -209,7 +213,7 @@ def translate_compare(expression: Expression, session: Session, model, get_model
     _this = val => model.pk1 = val.pk1 and model.pk2 = val.pk2
 
     Where Target is the type that the dot path refers to and mirror flips an
-    operaiton.
+    operation.
     """
     (left, right) = expression.args
     left_path = dot_path(left)
@@ -218,7 +222,11 @@ def translate_compare(expression: Expression, session: Session, model, get_model
     # Dot operation is on the left hand side
     if left_path[1:]:
         assert left_path[0] == Variable("_this")
-        assert not right_path
+        if right_path:
+            raise PolarRuntimeError(
+                "Invalid comparison in policy. This may be caused by comparing the "
+                + "foreign key field rather than the relationship property"
+            )
         path, field_name = left_path[1:-1], left_path[-1]
         return translate_dot(
             path,
@@ -256,7 +264,7 @@ def translate_compare(expression: Expression, session: Session, model, get_model
         return pk_filter
 
 
-def translate_in(expression, session, model, get_model):
+def translate_in(expression: Expression, session: Session, model, get_model):
     """Translate the in operator.
 
     Relationship contains at least one value that matches expr.
@@ -333,7 +341,7 @@ def translate_dot(path: Tuple[str, ...], session: Session, model, func: EmitFunc
             return property.any(translate_dot(path[1:], session, model, func))
 
 
-def get_relationship(model, field_name: str):
+def get_relationship(model: type, field_name: str):
     """Get the property object for field on model. field must be a relationship field.
 
     :returns: (property, model, is_multi_valued)
@@ -346,7 +354,7 @@ def get_relationship(model, field_name: str):
     return (property, model, relationship.uselist)
 
 
-def emit_compare(field_name, value, operator, session, model):
+def emit_compare(field_name: str, value, operator, session: Session, model):
     """Emit a comparison operation comparing the value of ``field_name`` on ``model`` to ``value``."""
     assert not isinstance(value, Variable), "value is a variable"
     property = getattr(model, field_name)
@@ -358,7 +366,7 @@ def emit_subexpression(sub_expression: Expression, get_model, session: Session, 
     return translate_expr(sub_expression, session, model, get_model)
 
 
-def emit_contains(field_name, value, session, model):
+def emit_contains(field_name: str, value, session: Session, model):
     """Emit a contains operation, checking that multi-valued relationship field ``field_name`` contains ``value``."""
     # TODO (dhatch): Could this be valid for fields that are not relationship fields?
     property, model, is_multi_valued = get_relationship(model, field_name)

@@ -1,7 +1,8 @@
 import codecs
 import os
-from setuptools import setup, find_packages
 from os import path
+
+from setuptools import find_packages, setup
 
 here = path.abspath(path.dirname(__file__))
 
@@ -9,7 +10,7 @@ here = path.abspath(path.dirname(__file__))
 try:
     with open(path.join(here, "README.md"), encoding="utf-8") as f:
         long_description = f.read()
-except IOError:
+except OSError:
     long_description = ""
 
 # Hack around tox, don't count oso as a dependency when running under tox.
@@ -37,8 +38,7 @@ def get_version(rel_path):
             # __version__ = "0.9"
             delim = '"' if '"' in line else "'"
             return line.split(delim)[1]
-    else:
-        raise RuntimeError("Unable to find version string.")
+    raise RuntimeError("Unable to find version string.")
 
 
 setup(
@@ -51,11 +51,11 @@ setup(
     author_email="support@osohq.com",
     classifiers=[
         "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Apache Software License",
     ],
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=install_requires,
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
@@ -65,7 +65,7 @@ setup(
     #
     # Similar to `install_requires` above, these must be valid existing
     # projects.
-    extras_require={"flask": ["flask", "flask_sqlalchemy"]},
+    extras_require={"flask": ["flask", "flask_sqlalchemy<3.0"]},
     # If there are data files included in your packages that need to be
     # installed, specify them here.
     #

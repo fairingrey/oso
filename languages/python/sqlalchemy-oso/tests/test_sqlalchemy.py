@@ -1,17 +1,16 @@
 """Test hooks & SQLAlchemy API integrations."""
 import pytest
-
 from sqlalchemy.orm import aliased, joinedload
 
+from sqlalchemy_oso.compat import USING_SQLAlchemy_v1_3
 from sqlalchemy_oso.session import (
+    AuthorizedSession,
     authorized_sessionmaker,
     scoped_session,
-    AuthorizedSession,
 )
-from sqlalchemy_oso.compat import USING_SQLAlchemy_v1_3
 
-from .models import User, Post
 from .conftest import print_query
+from .models import Post, User
 
 
 def log_queries():
@@ -319,7 +318,7 @@ def test_null_with_partial(engine, oso):
     if USING_SQLAlchemy_v1_3:
         where_clause = " \nWHERE posts.contents IS NULL"
     else:
-        # NOTE(gj): In constrast to the `Query.before_compile` event we listen
+        # NOTE(gj): In contrast to the `Query.before_compile` event we listen
         # for in 1.3, the `Session.do_orm_execute` event we listen for in
         # SQLAlchemy 1.4 (unsurprisingly) happens at ORM execution time. Because
         # of this, the WHERE clauses we add as authorization constraints are
@@ -358,7 +357,7 @@ def test_unconditional_policy_has_no_filter(engine, oso, fixture_data):
     if USING_SQLAlchemy_v1_3:
         where_clause = " \nWHERE 1 = 1"
     else:
-        # NOTE(gj): In constrast to the `Query.before_compile` event we listen
+        # NOTE(gj): In contrast to the `Query.before_compile` event we listen
         # for in 1.3, the `Session.do_orm_execute` event we listen for in
         # SQLAlchemy 1.4 (unsurprisingly) happens at ORM execution time. Because
         # of this, the WHERE clauses we add as authorization constraints are
@@ -555,10 +554,10 @@ def test_register_models_registry():
     """Test that `register_models()` works with a SQLAlchemy 1.4-style
     registry."""
     # TODO(gj): remove type ignore once we upgrade to 1.4-aware MyPy types.
-    from sqlalchemy.orm import registry  # type: ignore
-    from sqlalchemy import Table, Column, Integer
     from oso import Oso
     from polar.exceptions import DuplicateClassAliasError
+    from sqlalchemy import Column, Integer, Table
+    from sqlalchemy.orm import registry  # type: ignore
 
     from sqlalchemy_oso.auth import register_models
 

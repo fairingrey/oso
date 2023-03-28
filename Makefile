@@ -6,7 +6,7 @@
 
 #! If you add another dependency to this you must also add it to the Test
 #! github action or it won't run in CI. All jobs run in parallel on CI and
-#! `make test` is just a local convienence.
+#! `make test` is just a local convenience.
 test: go-test rust-test python-test ruby-test java-test python-flask-test \
 	python-django-test python-sqlalchemy-test wasm-test js-test
 
@@ -68,7 +68,7 @@ fmt.jar:
 	curl -L $(URL) > fmt.jar
 
 fmt-java: fmt.jar
-	$(eval FILES := $(shell git ls-files '*.java'))
+	$(eval FILES := $(shell git ls-files 'languages/java/*.java'))
 	$(eval OPENS := $(shell echo "--add-opens jdk.compiler/com.sun.tools.javac."{api,tree,file,util,parser}"=ALL-UNNAMED"))
 	java $(OPENS) -jar fmt.jar --replace $(FILES)
 

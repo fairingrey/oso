@@ -1,7 +1,8 @@
 import codecs
 import os
-from setuptools import setup, find_packages
 from os import path
+
+from setuptools import find_packages, setup
 
 here = path.abspath(path.dirname(__file__))
 
@@ -9,7 +10,7 @@ here = path.abspath(path.dirname(__file__))
 try:
     with open(path.join(here, "README.md"), encoding="utf-8") as f:
         long_description = f.read()
-except IOError:
+except OSError:
     long_description = ""
 
 install_requires = ""
@@ -32,8 +33,7 @@ def get_version(rel_path):
             # __version__ = "0.9"
             delim = '"' if '"' in line else "'"
             return line.split(delim)[1]
-    else:
-        raise RuntimeError("Unable to find version string.")
+    raise RuntimeError("Unable to find version string.")
 
 
 setup(
@@ -45,11 +45,11 @@ setup(
     author="Oso Security, Inc.",
     classifiers=[
         "Development Status :: 4 - Beta",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Apache Software License",
     ],
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     setup_requires=["cffi>=1.0.0", "wheel"],
     cffi_modules=["polar/build.py:ffibuilder"],
     install_requires=install_requires,
